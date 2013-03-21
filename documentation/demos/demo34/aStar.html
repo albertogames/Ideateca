@@ -1,0 +1,326 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <script src="../../track.js" type="text/javascript"></script>
+
+    <title>CAAT example: A* pathfinding</title>
+
+    <link rel="stylesheet" href="../style/demo.css">
+
+</head>
+<body>
+
+    <div id="page">
+        <div id="header">
+            <div style="text-align: center;">
+
+            </div>
+        </div>
+
+        <div id="content">
+            <div id="menu">
+
+            </div>
+            <div id="experiment">
+                <div style="text-align:center">
+                    <h1>A* pathfinding</h1>
+                </div>
+                <div id="experiment-holder">
+                    <canvas id="experiment-canvas"></canvas>
+                </div>
+                <div id="experiment-description">
+                    <div>
+                        <p>Controls:</p>
+                        <ul>
+                            <li>Click a cell to select "from" cell</li>
+							<li>CTRL + Click a cell to select "to" cell</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p>
+                            This demo features the following elements:
+                        </p>
+                        <ul>
+                            <li>Represent a map by cells.</li>
+                            <li>Calculate A*</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+
+        </div> <!-- content -->
+    </div> <!-- page -->
+
+</body>
+
+<!--<script type="text/javascript" src="../menu/menu.js"></script> -->
+<script src="../../../src/Core/ModuleManager.js"></script>
+
+<script type="text/javascript" src="../../../build/caat.js"></script>
+<script type="text/javascript">
+	(function() {
+		function __scene(director, logicMap) {
+
+			var aStar = new CAAT.PathUtil.AStar(logicMap);
+			var keyListener = new CAAT.TouchEvent();
+			
+			var aStarPath = [];
+			var aStarPathImages = [];
+			
+			var fromCell = [0,0];
+			var toCell = [0,0];
+			var previousFromCell = [0,0];
+			var previousToCell = [0,0];
+			var repaint = false;
+			
+			aStarPath = aStar.calculateRoute(fromCell[0],fromCell[1],
+													toCell[0],toCell[1]);
+			
+			var sizeCellsX = logicMap.getSizeCellsX();
+			var sizeCellsY = logicMap.getSizeCellsY();
+			var cellSize = logicMap.getCellSize();
+			
+			var scene= director.createScene();
+ 
+			//Load needed images
+			var blueSquareImage = 
+                    new CAAT.Foundation.SpriteImage().initialize(
+                            director.getImage('blueSquare'),  1, 1) ;
+			var blackSquareImage = 
+                    new CAAT.Foundation.SpriteImage().initialize(
+                            director.getImage('blackSquare'),  1, 1) ;
+							
+							
+			
+			var bg= new CAAT.ActorContainer().
+            setBounds(0,0,director.width,director.height);
+ 
+			
+			bg.paint= function(director,time) {
+				var ctx= director.ctx;
+				ctx.stokeStyle='black';
+				ctx.strokeRect(0,0,bg.width,bg.height);
+			};
+ 
+			scene.addChild(bg);
+ 
+			var map= new CAAT.Actor().
+				setBounds(0,0,director.width,director.height).
+				enableEvents(false);
+				
+			bg.addChild(map);
+ 
+			//Paint function
+			map.paint= function(director, time) {
+ 
+				var ctx= director.ctx;
+				var gap= 80;
+		 
+				// build a color
+				var color= 'rgb(';
+				color+= 0;
+				color+=',';
+				color+= 0;
+				color+=',';
+				color+= 0;
+				color+=')';
+				
+				
+				ctx.strokeStyle= color;
+				ctx.beginPath();
+				
+				//Paint vertical lines
+				for (var i = 0; i < sizeCellsX; i++){
+					ctx.moveTo(i*cellSize,0);
+					ctx.lineTo(i*cellSize,cellSize * sizeCellsY);
+				}
+				
+				//Paint horizontal lines
+				for (var i = 0; i < sizeCellsY; i++){
+					ctx.moveTo(0,i*cellSize);
+					ctx.lineTo(cellSize * sizeCellsX,i*cellSize);
+				}
+		
+		
+				var coords = [];
+				for (var i = 0; i < sizeCellsX; i++){
+				
+					for (var j = 0; j < sizeCellsY;j++){
+						
+						//Paint occupied square
+						if (!logicMap.isFree(i,j)){
+							coords = logicMap.cellToCoords(i,j);
+							coords[1] =  bg.height - coords[1];
+							var actorBlackSquare = new CAAT.Foundation.Actor().
+							// set background image to be a reference of a SpriteImage instance
+							// and set actor's size equal to a SpriteImage's subimage size
+								setBackgroundImage( blackSquareImage ).
+							// center the actor on mouse position
+								centerOn(coords[0], coords[1]).
+							// scale
+								setScale(0.5,0.5);
+				 
+							// add the actor.
+							bg.addChild(actorBlackSquare);
+						}
+						
+					}
+					
+				}
+		 
+				
+				if (repaint){
+					coords = [];
+					
+					//Delete previous path squares
+					for (actor in aStarPathImages){
+						bg.removeChild(aStarPathImages[actor]);
+					}
+					
+					//Paint new path squares
+					for (node in  aStarPath){
+						coords = logicMap.cellToCoords(aStarPath[node].getPosX(),aStarPath[node].getPosY());
+						coords[1] =  bg.height - coords[1];
+						
+						var actorBlueSquare = new CAAT.Foundation.Actor().
+							// set background image
+								setBackgroundImage( blueSquareImage ).
+							// center the actor on mouse position
+								centerOn(coords[0], coords[1]).
+							// scale
+								setScale(0.5,0.5);
+				 
+							// add the actor.
+							bg.addChild(actorBlueSquare);
+						
+						aStarPathImages.push(actorBlueSquare);
+					}
+					repaint = false;
+				}
+				
+				ctx.lineWidth=0.5;
+				ctx.lineJoin='round';
+				ctx.lineCap='round';
+				ctx.stroke();
+				
+			};
+			
+			bg.mouseClick=function(e){
+			
+				var cellPosition = logicMap.coordsToCell(e.x,bg.height - e.y);
+				
+				//Calculate clicked cell
+				if (e.isControlDown()){	
+				
+					//Cell "to"
+					toCell[0] = cellPosition[0];
+					toCell[1] = cellPosition[1];
+					
+					if ((toCell[0] != previousToCell[0]) || (toCell[1] != previousToCell[1])){
+						//If cell "to" has changed
+						previousToCell[0] = toCell[0];
+						previousToCell[1] = toCell[1];
+						repaint = true;
+						aStarPath = aStar.calculateRoute(fromCell[0],fromCell[1],
+														toCell[0],toCell[1]);
+					}	
+					
+				}else{
+					//Cell "from"
+					fromCell[0] = cellPosition[0];
+					fromCell[1] = cellPosition[1];
+					
+					if ((fromCell[0] != previousFromCell[0]) || (fromCell[1] != previousFromCell[1])){
+						//If cell "from" has changed
+						previousFromCell[0] = fromCell[0];
+						previousFromCell[1] = fromCell[1];
+						repaint = true;
+						aStarPath = aStar.calculateRoute(fromCell[0],fromCell[1],
+														toCell[0],toCell[1]);
+					}
+				}
+				
+			};
+			
+ 
+		}
+		
+		function __start() {
+			
+			//Create logic Map
+			var logicMap = new CAAT.PathUtil.LogicMap(20,15,150,150,0,0,40);
+			
+			//Mark occupied squares
+			logicMap.setContent(3,2,1);
+			logicMap.setContent(3,3,1);
+			logicMap.setContent(3,4,1);
+			logicMap.setContent(3,5,1);
+			logicMap.setContent(3,6,1);
+			logicMap.setContent(3,7,1);
+			logicMap.setContent(3,8,1);
+			logicMap.setContent(3,9,1);
+			
+			logicMap.setContent(6,7,1);
+			logicMap.setContent(7,7,1);
+			logicMap.setContent(8,7,1);
+			logicMap.setContent(9,7,1);
+			logicMap.setContent(10,7,1);
+			logicMap.setContent(11,7,1);
+			
+			logicMap.setContent(8,2,1);
+			logicMap.setContent(8,3,1);
+			logicMap.setContent(8,4,1);
+			
+			logicMap.setContent(12,3,1);
+			logicMap.setContent(13,3,1);
+			
+			logicMap.setContent(6,10,1);
+			logicMap.setContent(6,11,1);
+			logicMap.setContent(6,12,1);
+			logicMap.setContent(6,13,1);
+			logicMap.setContent(7,10,1);
+			logicMap.setContent(7,11,1);
+			logicMap.setContent(7,12,1);
+			logicMap.setContent(7,13,1);
+			logicMap.setContent(7,14,1);
+		
+			logicMap.setContent(16,11,1);
+			logicMap.setContent(16,10,1);
+			logicMap.setContent(15,10,1);
+			logicMap.setContent(15,11,1);
+			
+			
+			//Create aStar class
+			var aStar = new CAAT.PathUtil.AStar(logicMap);
+			
+			var director = new CAAT.Director().
+            initialize(800,600, document.getElementById('experiment-canvas'));
+ 
+			//Load images
+			new CAAT.Module.Preloader.ImagePreloader().loadImages(
+				[
+					{id:'blackSquare',    url:'../demo-resources/img/blackSquare.png'},
+					{id:'blueSquare',    url:'../demo-resources/img/blueSquare.png'}
+				],
+				
+				function( counter, images ) {
+					director.setImagesCache(images);
+					__scene(director,logicMap);
+				}
+			);	
+			
+			CAAT.loop(60);
+			
+		}
+		
+		__start();
+		
+		
+	})();
+	
+	
+</script>
+
+</html>
