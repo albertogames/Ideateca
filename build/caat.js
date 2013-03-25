@@ -14214,6 +14214,9 @@ CAAT.Module({
 				  this.sorted = true;
 				},
 				
+				resort: function() {
+					this.sorted = false;
+				},
 			  /**
 			  * Delet a object of the queue
 			  * @param object
@@ -14567,8 +14570,9 @@ CAAT.Module({
 									//A lower G cost means that this is a better path. If so, change the parent of the square to the current square, and recalculate the G and F scores of the square. 
 									//If you are keeping your open list sorted by F score, you may need to resort the list to account for the change.
 									if (auxNode.getG() > newNode.getG()){
-										openList.erase(auxNode);
-										openList.push(newNode,newNode.getF());
+										auxNode.setParent(newNode.getParent());
+										auxNode.calculate(finalNode);
+										openList.resort();
 									}
 								
 								}
