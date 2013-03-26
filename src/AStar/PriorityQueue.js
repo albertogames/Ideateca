@@ -151,6 +151,9 @@ CAAT.Module({
 				  this.sorted = true;
 				},
 				
+				resort: function() {
+					this.sorted = false;
+				},
 			  /**
 			  * Delet a object of the queue
 			  * @param object

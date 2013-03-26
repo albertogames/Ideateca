@@ -68,12 +68,18 @@
 			
 			var aStarPath = [];
 			var aStarPathImages = [];
+			var mapImages = [];
+			
+			var pathBehavior = null;
+			var path = new CAAT.Path();
 			
 			var fromCell = [0,0];
 			var toCell = [0,0];
 			var previousFromCell = [0,0];
 			var previousToCell = [0,0];
 			var repaint = false;
+			
+			var fish = null;
 			
 			aStarPath = aStar.calculateRoute(fromCell[0],fromCell[1],
 													toCell[0],toCell[1]);
@@ -111,7 +117,22 @@
 				enableEvents(false);
 				
 			bg.addChild(map);
- 
+			
+			fish = new CAAT.Foundation.Actor().
+								setBackgroundImage(
+										new CAAT.Foundation.SpriteImage().
+												initialize(director.getImage('fish'), 1, 3),
+										true).
+								setAnimationImageIndex([0,1,2,1]).
+								setChangeFPS(300).
+								enableEvents(false);
+								
+					fish.setPositionAnchor(.5, .5);
+					
+			scene.addChild(fish);
+			
+			fish.setVisible(false);
+					
 			//Paint function
 			map.paint= function(director, time) {
  
@@ -145,6 +166,9 @@
 		
 		
 				var coords = [];
+				for (actor in mapImages){
+					bg.removeChild(mapImages[actor]);
+				}
 				for (var i = 0; i < sizeCellsX; i++){
 				
 					for (var j = 0; j < sizeCellsY;j++){
@@ -164,6 +188,8 @@
 				 
 							// add the actor.
 							bg.addChild(actorBlackSquare);
+							
+							mapImages.push(actorBlackSquare);
 						}
 						
 					}
@@ -172,6 +198,7 @@
 		 
 				
 				if (repaint){
+				
 					coords = [];
 					
 					//Delete previous path squares
@@ -198,6 +225,7 @@
 						aStarPathImages.push(actorBlueSquare);
 					}
 					repaint = false;
+					
 				}
 				
 				ctx.lineWidth=0.5;
@@ -222,9 +250,9 @@
 						//If cell "to" has changed
 						previousToCell[0] = toCell[0];
 						previousToCell[1] = toCell[1];
-						repaint = true;
 						aStarPath = aStar.calculateRoute(fromCell[0],fromCell[1],
 														toCell[0],toCell[1]);
+						repaint = true;
 					}	
 					
 				}else{
@@ -236,10 +264,61 @@
 						//If cell "from" has changed
 						previousFromCell[0] = fromCell[0];
 						previousFromCell[1] = fromCell[1];
-						repaint = true;
 						aStarPath = aStar.calculateRoute(fromCell[0],fromCell[1],
 														toCell[0],toCell[1]);
+						repaint = true;
 					}
+				}
+				
+				
+				if (repaint){
+						
+					if (!fish.isVisible()){
+						fish.setVisible(true);
+					}					
+			
+					path = new CAAT.Path();
+					
+					if (pathBehavior != null){
+						fish.emptyBehaviorList();
+					}
+
+					var cl= 'rgb(';
+					cl+= 0;
+					cl+=',';
+					cl+= 0;
+					cl+=',';
+					cl+= 0;
+					cl+=')';
+					
+					var coords;
+					for (node in aStarPath){
+						coords = logicMap.cellToCoords(aStarPath[node].getPosX(),aStarPath[node].getPosY());
+						if (node == 0){
+							path.beginPath(coords[0], bg.height - coords[1]);
+							
+						}else{
+							path.addLineTo(coords[0], bg.height - coords[1],cl);
+						}
+					}
+					path.endPath();
+
+					 
+					// setup up a path traverser for the path.
+					pathBehavior= new CAAT.PathBehavior().
+							setPath( path ).
+						// take 5 seconds to traverse the path
+							setFrameTime(0,5000).
+						// do it continuously, not just one time
+							setCycle(true).
+						// head the actor across the path to the next point.
+							setAutoRotate( true ).
+							setTranslation(
+							fish.width/2,
+							fish.height/2);
+					 pathBehavior.normalizeTime();
+					fish.addBehavior( pathBehavior );
+				
 				}
 				
 			};
@@ -301,6 +380,7 @@
 			//Load images
 			new CAAT.Module.Preloader.ImagePreloader().loadImages(
 				[
+					{id:'fish', 			url:'../demo-resources/img/anim1.png'},
 					{id:'blackSquare',    url:'../demo-resources/img/blackSquare.png'},
 					{id:'blueSquare',    url:'../demo-resources/img/blueSquare.png'}
 				],
